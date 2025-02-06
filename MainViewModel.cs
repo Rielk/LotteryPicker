@@ -7,7 +7,10 @@ internal class MainViewModel : INotifyPropertyChanged
 {
 	public event PropertyChangedEventHandler? PropertyChanged;
 
+	private (int Start, int End) Range = (1, 101);
+
 	private readonly int?[] lotteryNumbers = [null, null, null, null, null];
+	private readonly int?[] rollingNumbers = [null, null, null, null, null];
 	public int? Number1 { get { return GetNumber(0); } }
 	public int? Number2 { get { return GetNumber(1); } }
 	public int? Number3 { get { return GetNumber(2); } }
@@ -17,6 +20,7 @@ internal class MainViewModel : INotifyPropertyChanged
 	private bool isRolling = false;
 	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value); }
 
+	private int currentlyRolling = 0;
 
 	private static readonly IList<string> propertyNames = new ReadOnlyCollection<string>([
 		nameof(Number1),
@@ -28,34 +32,51 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public int? GetNumber(int index)
 	{
-		return lotteryNumbers[index];
+		return lotteryNumbers[index] ?? rollingNumbers[index];
 	}
 
 	public async void RollNumbers()
 	{
 		ClearNumbers();
 		IsRolling = true;
+		StartRandomDisplay();
 
 		var r = new Random();
-		const int bottom = 0, top = 100;
 		for (int i = 0; i < lotteryNumbers.Length; i++)
 		{
 			var delay = Task.Delay(1000);
 			int? pick = null;
 			while (pick == null || lotteryNumbers.Contains(pick))
-				pick = r.Next(bottom, top);
+				pick = r.Next(Range.Start, Range.End);
 			await delay;
 			lotteryNumbers[i] = pick;
+			currentlyRolling++;
 			OnPropertyChanged(propertyNames[i]);
 		}
 
 		IsRolling = false;
 	}
 
+	private async void StartRandomDisplay()
+	{
+		var r = new Random();
+		while (IsRolling)
+		{
+			var delay = Task.Delay(100);
+			for (int i = currentlyRolling; i < rollingNumbers.Length; i++)
+			{
+				rollingNumbers[i] = r.Next(Range.Start, Range.End);
+				OnPropertyChanged(propertyNames[i]);
+			}
+			await delay;
+		}
+	}
+
 	private void ClearNumbers()
 	{
 		for (int i = 0; i < lotteryNumbers.Length; i++)
 			lotteryNumbers[i] = null;
+		currentlyRolling = 0;
 		foreach (string name in propertyNames)
 			OnPropertyChanged(name);
 	}
