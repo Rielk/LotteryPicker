@@ -8,11 +8,11 @@ internal class MainViewModel : INotifyPropertyChanged
 	public event PropertyChangedEventHandler? PropertyChanged;
 
 	private readonly int?[] lotteryNumbers = [null, null, null, null, null];
-	public int? Number1 { get { return lotteryNumbers[0]; } }
-	public int? Number2 { get { return lotteryNumbers[1]; } }
-	public int? Number3 { get { return lotteryNumbers[2]; } }
-	public int? Number4 { get { return lotteryNumbers[3]; } }
-	public int? Number5 { get { return lotteryNumbers[4]; } }
+	public int? Number1 { get { return GetNumber(0); } }
+	public int? Number2 { get { return GetNumber(1); } }
+	public int? Number3 { get { return GetNumber(2); } }
+	public int? Number4 { get { return GetNumber(3); } }
+	public int? Number5 { get { return GetNumber(4); } }
 
 	private bool isRolling = false;
 	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value); }
@@ -26,16 +26,26 @@ internal class MainViewModel : INotifyPropertyChanged
 		nameof(Number5),
 		]);
 
+	public int? GetNumber(int index)
+	{
+		return lotteryNumbers[index];
+	}
+
 	public async void RollNumbers()
 	{
 		ClearNumbers();
 		IsRolling = true;
 
 		var r = new Random();
+		const int bottom = 0, top = 100;
 		for (int i = 0; i < lotteryNumbers.Length; i++)
 		{
-			await Task.Delay(1000);
-			lotteryNumbers[i] = r.Next(0, 100); ;
+			var delay = Task.Delay(1000);
+			int? pick = null;
+			while (pick == null || lotteryNumbers.Contains(pick))
+				pick = r.Next(bottom, top);
+			await delay;
+			lotteryNumbers[i] = pick;
 			OnPropertyChanged(propertyNames[i]);
 		}
 
