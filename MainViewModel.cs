@@ -18,7 +18,7 @@ internal class MainViewModel : INotifyPropertyChanged
 	public int? Number5 { get { return GetNumber(4); } }
 
 	private bool isRolling = false;
-	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value); }
+	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value, onChanged: StartRandomDisplay); }
 
 	private int currentlyRolling = 0;
 
@@ -29,6 +29,8 @@ internal class MainViewModel : INotifyPropertyChanged
 		nameof(Number4),
 		nameof(Number5),
 		]);
+	private const int FullRollDelay = 1000;
+	private const int QuickSpinDelay = 50;
 
 	public int? GetNumber(int index)
 	{
@@ -37,14 +39,13 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public async void RollNumbers()
 	{
-		ClearNumbers();
 		IsRolling = true;
-		StartRandomDisplay();
+		ClearNumbers();
 
 		var r = new Random();
 		for (int i = 0; i < lotteryNumbers.Length; i++)
 		{
-			var delay = Task.Delay(1000);
+			var delay = Task.Delay(FullRollDelay);
 			int? pick = null;
 			while (pick == null || lotteryNumbers.Contains(pick))
 				pick = r.Next(Range.Start, Range.End);
@@ -62,7 +63,7 @@ internal class MainViewModel : INotifyPropertyChanged
 		var r = new Random();
 		while (IsRolling)
 		{
-			var delay = Task.Delay(100);
+			var delay = Task.Delay(QuickSpinDelay);
 			for (int i = currentlyRolling; i < rollingNumbers.Length; i++)
 			{
 				rollingNumbers[i] = r.Next(Range.Start, Range.End);
