@@ -6,6 +6,9 @@
         xmlns:local="clr-namespace:LotteryPicker"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
+    <Window.Resources>
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+    </Window.Resources>
     <Window.DataContext>
         <local:MainViewModel/>
     </Window.DataContext>
@@ -24,7 +27,7 @@
             <TextBlock Grid.Column="3" TextWrapping="NoWrap" Text="{Binding Number4, TargetNullValue=X}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
             <TextBlock Grid.Column="4" TextWrapping="NoWrap" Text="{Binding Number5, TargetNullValue=X}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
         </Grid>
-        <Button Content="Roll" Margin="10,10,10,10" Click="Button_Click"/>
+        <Button Content="Roll" Margin="10,10,10,10" Click="Button_Click" IsEnabled="{Binding IsRolling, Converter={StaticResource InverseBooleanConverter}}"/>
 
     </StackPanel>
 </Window>
