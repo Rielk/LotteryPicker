@@ -7,15 +7,16 @@ internal class MainViewModel : INotifyPropertyChanged
 {
 	public event PropertyChangedEventHandler? PropertyChanged;
 
-	private (int Start, int End) Range = (1, 101);
+	private (int Start, int End) Range = (1, 60);
 
-	private readonly int?[] lotteryNumbers = [null, null, null, null, null];
-	private readonly int?[] rollingNumbers = [null, null, null, null, null];
+	private readonly int?[] lotteryNumbers = [null, null, null, null, null, null];
+	private readonly int?[] rollingNumbers = [null, null, null, null, null, null];
 	public int? Number1 { get { return GetNumber(0); } }
 	public int? Number2 { get { return GetNumber(1); } }
 	public int? Number3 { get { return GetNumber(2); } }
 	public int? Number4 { get { return GetNumber(3); } }
 	public int? Number5 { get { return GetNumber(4); } }
+	public int? BonusNumber { get { return GetNumber(5); } }
 
 	private bool isRolling = false;
 	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value, onChanged: StartRandomDisplay); }
@@ -28,6 +29,7 @@ internal class MainViewModel : INotifyPropertyChanged
 		nameof(Number3),
 		nameof(Number4),
 		nameof(Number5),
+		nameof(BonusNumber),
 		]);
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;

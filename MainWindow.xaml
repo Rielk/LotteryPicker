@@ -20,12 +20,14 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" TextWrapping="NoWrap" Text="{Binding Number1, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
             <TextBlock Grid.Column="1" TextWrapping="NoWrap" Text="{Binding Number2, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
             <TextBlock Grid.Column="2" TextWrapping="NoWrap" Text="{Binding Number3, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
             <TextBlock Grid.Column="3" TextWrapping="NoWrap" Text="{Binding Number4, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
             <TextBlock Grid.Column="4" TextWrapping="NoWrap" Text="{Binding Number5, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
+            <TextBlock Grid.Column="5" TextWrapping="NoWrap" Text="{Binding BonusNumber, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
         </Grid>
         <Button Content="Roll" Margin="10,10,10,10" Click="Button_Click" IsEnabled="{Binding IsRolling, Converter={StaticResource InverseBooleanConverter}}"/>
 
