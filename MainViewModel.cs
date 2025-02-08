@@ -7,83 +7,170 @@ internal class MainViewModel : INotifyPropertyChanged
 {
 	public event PropertyChangedEventHandler? PropertyChanged;
 
-	private (int Start, int End) Range = (1, 60);
 
-	private readonly int?[] lotteryNumbers = [null, null, null, null, null, null];
-	private readonly int?[] rollingNumbers = [null, null, null, null, null, null];
-	public int? Number1 { get { return GetNumber(0); } }
-	public int? Number2 { get { return GetNumber(1); } }
-	public int? Number3 { get { return GetNumber(2); } }
-	public int? Number4 { get { return GetNumber(3); } }
-	public int? Number5 { get { return GetNumber(4); } }
-	public int? BonusNumber { get { return GetNumber(5); } }
+	private ReadOnlyObservableCollection<int?> numbers;
+	public ReadOnlyObservableCollection<int?> Numbers => numbers;
+	private ObservableCollection<int?> NumbersBase
+	{
+		set => SetProperty(ref numbers, new(value), nameof(Numbers));
+	}
+
+	private int? bonusNumber;
+	public int? BonusNumber
+	{
+		get => bonusNumber;
+		private set => SetProperty(ref bonusNumber, value);
+	}
+
+	private int Bottom { get; }
+	private int Top { get; }
+	private int Count { get; }
+
 
 	private bool isRolling = false;
-	public bool IsRolling { get => isRolling; set => SetProperty(ref isRolling, value, onChanged: StartRandomDisplay); }
+	public bool IsRolling
+	{
+		get => isRolling;
+		set => SetProperty(ref isRolling, value);
+	}
 
-	private int currentlyRolling = 0;
+	public bool IsSpinningNumbers { get => SpinNumbersTS != null; }
+	private CancellationTokenSource? SpinNumbersTS;
+	private Task SpinNumbersTask = Task.CompletedTask;
 
-	private static readonly IList<string> propertyNames = new ReadOnlyCollection<string>([
-		nameof(Number1),
-		nameof(Number2),
-		nameof(Number3),
-		nameof(Number4),
-		nameof(Number5),
-		nameof(BonusNumber),
-		]);
+	public bool IsSpinningBonus { get => SpinBonusTS != null; }
+	private CancellationTokenSource? SpinBonusTS;
+	private Task SpinBonusTask = Task.CompletedTask;
+
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
 
 	public int? GetNumber(int index)
 	{
-		return lotteryNumbers[index] ?? rollingNumbers[index];
+		if (index > 4)
+			return null;
+		return Numbers[index];
+	}
+
+	public MainViewModel()
+	{
+		int bottom = 1, top = 60, count = 5;
+		if (top <= bottom)
+			throw new ArgumentException("Upper Limit of LotteryNumbers must be greater than the Lower Limit");
+		if (top - bottom < count + 1)
+			throw new ArgumentException($"Insuffient values between Limits to provide {count} unique numbers");
+
+		Bottom = bottom;
+		Top = top;
+		Count = count;
+		numbers = new(new(new int?[5]));
 	}
 
 	public async void RollNumbers()
 	{
+		if (IsRolling)
+			return;
 		IsRolling = true;
-		ClearNumbers();
-
-		var r = new Random();
-		for (int i = 0; i < lotteryNumbers.Length; i++)
-		{
-			var delay = Task.Delay(FullRollDelay);
-			int? pick = null;
-			while (pick == null || lotteryNumbers.Contains(pick))
-				pick = r.Next(Range.Start, Range.End);
-			await delay;
-			lotteryNumbers[i] = pick;
-			currentlyRolling++;
-			OnPropertyChanged(propertyNames[i]);
-		}
-
+		_ = StartSpinningNumbers(QuickSpinDelay);
+		await Task.Delay(FullRollDelay);
+		await StopSpinningNumbers();
+		_ = StartSpinningBonus(QuickSpinDelay);
+		await Task.Delay(FullRollDelay);
+		await StopSpinningBonus();
 		IsRolling = false;
 	}
 
-	private async void StartRandomDisplay()
+	private async Task StartSpinningNumbers(int delay)
 	{
-		var r = new Random();
-		while (IsRolling)
+		if (IsSpinningNumbers)
 		{
-			var delay = Task.Delay(QuickSpinDelay);
-			for (int i = currentlyRolling; i < rollingNumbers.Length; i++)
-			{
-				rollingNumbers[i] = r.Next(Range.Start, Range.End);
-				OnPropertyChanged(propertyNames[i]);
-			}
-			await delay;
+			await SpinNumbersTask;
+			return;
 		}
-	}
 
-	private void ClearNumbers()
+		SpinNumbersTS = new CancellationTokenSource();
+		CancellationToken ct = SpinNumbersTS.Token;
+
+		await StopSpinningBonus();
+
+		Random r = new();
+		SpinNumbersTask = Task.Run(async () =>
+		{
+			while (!ct.IsCancellationRequested)
+			{
+				RegenerateNumbers(r);
+				await Task.Delay(delay);
+			}
+		}, ct);
+		await SpinNumbersTask;
+		SpinNumbersTS.Dispose();
+		SpinNumbersTS = null;
+
+	}
+	private async Task StopSpinningNumbers()
 	{
-		for (int i = 0; i < lotteryNumbers.Length; i++)
-			lotteryNumbers[i] = null;
-		currentlyRolling = 0;
-		foreach (string name in propertyNames)
-			OnPropertyChanged(name);
+		SpinNumbersTS?.Cancel();
+		await SpinNumbersTask;
 	}
 
+	private async Task StartSpinningBonus(int delay)
+	{
+		if (IsSpinningBonus)
+		{
+			await SpinBonusTask;
+			return;
+		}
+
+		SpinBonusTS = new CancellationTokenSource();
+		CancellationToken ct = SpinBonusTS.Token;
+
+		await StopSpinningNumbers();
+
+		Random r = new();
+		SpinBonusTask = Task.Run(async () =>
+		{
+			while (!ct.IsCancellationRequested)
+			{
+				RegenerateBonusNumber(r);
+				await Task.Delay(delay);
+			}
+		}, ct);
+		await SpinBonusTask;
+		SpinBonusTS.Dispose();
+		SpinBonusTS = null;
+
+	}
+	private async Task StopSpinningBonus()
+	{
+		SpinBonusTS?.Cancel();
+		await SpinBonusTask;
+	}
+
+	private void RegenerateNumbers(Random r)
+	{
+		BonusNumber = null;
+		int?[] numbers = new int?[Count];
+		for (int i = 0; i < Count; i++)
+			numbers[i] = GenerateNumber(r, numbers);
+
+		NumbersBase = new(numbers.Order());
+	}
+
+	private void RegenerateBonusNumber(Random r)
+	{
+		if (Numbers.Any(n => n == null))
+			RegenerateNumbers(r);
+		BonusNumber = GenerateNumber(r, Numbers);
+	}
+
+	private int GenerateNumber(Random r, IEnumerable<int?> numbers)
+	{
+		//A little brute forcey and could be cleverer for ranges with size ~= count. But adequate for this.
+		int? next = null;
+		while (next == null || numbers.Contains(next.Value))
+			next = r.Next(Bottom, Top);
+		return next.Value;
+	}
 
 	#region INotifyPropertyChanged
 	protected bool SetProperty<T>(ref T backingStore, T value,
