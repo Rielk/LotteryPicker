@@ -31,8 +31,13 @@ internal class MainViewModel : INotifyPropertyChanged
 		set => SetProperty(ref isRolling, value);
 	}
 
-	private bool quickRoll;
+	private bool quickRoll = false;
 	public bool QuickRoll { get => quickRoll; set => SetProperty(ref quickRoll, value); }
+
+	private bool showHistory = false;
+	public bool ShowHistory { get => showHistory; set => SetProperty(ref showHistory, value); }
+
+	public ObservableCollection<HistoryItem> History { get; } = [];
 
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
@@ -64,23 +69,30 @@ internal class MainViewModel : INotifyPropertyChanged
 	{
 		if (QuickRoll)
 		{
+			//Just generate numbers
 			Random r = new();
 			RegenerateNumbers(r);
 			RegenerateBonusNumber(r);
-			return;
 		}
-		//Queue the full animation.
-		if (IsRolling)
-			return;
-		IsRolling = true;
-		BonusNumber = null;
-		StartSpinningNumbers(QuickSpinDelay);
-		await Task.Delay(FullRollDelay);
-		await StopSpinningNumbers();
-		StartSpinningBonus(QuickSpinDelay);
-		await Task.Delay(FullRollDelay);
-		await StopSpinningBonus();
-		IsRolling = false;
+		else
+		{
+			//Queue the full animation.
+			if (IsRolling)
+				return;
+			IsRolling = true;
+			BonusNumber = null;
+			StartSpinningNumbers(QuickSpinDelay);
+			await Task.Delay(FullRollDelay);
+			await StopSpinningNumbers();
+			StartSpinningBonus(QuickSpinDelay);
+			await Task.Delay(FullRollDelay);
+			await StopSpinningBonus();
+			IsRolling = false;
+		}
+		if (Numbers.All(n => n.HasValue) && BonusNumber.HasValue)
+			History.Insert(0, new(Numbers.Select(n => n!.Value), BonusNumber.Value));
+		while (History.Count > 10)
+			History.RemoveAt(History.Count - 1);
 	}
 
 	private CancellationTokenSource? SpinNumbersTS;
