@@ -9,7 +9,8 @@
         Title="Lottery Number Picker"
         Height="Auto" Width="300"
         SizeToContent="Height"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
