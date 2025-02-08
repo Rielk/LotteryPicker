@@ -5,9 +5,6 @@ using System.Runtime.CompilerServices;
 namespace LotteryPicker;
 internal class MainViewModel : INotifyPropertyChanged
 {
-	public event PropertyChangedEventHandler? PropertyChanged;
-
-
 	private ReadOnlyObservableCollection<int?> numbers;
 	public ReadOnlyObservableCollection<int?> Numbers => numbers;
 	private ObservableCollection<int?> NumbersBase
@@ -34,14 +31,6 @@ internal class MainViewModel : INotifyPropertyChanged
 		set => SetProperty(ref isRolling, value);
 	}
 
-	public bool IsSpinningNumbers { get => SpinNumbersTS != null; }
-	private CancellationTokenSource? SpinNumbersTS;
-	private Task SpinNumbersTask = Task.CompletedTask;
-
-	public bool IsSpinningBonus { get => SpinBonusTS != null; }
-	private CancellationTokenSource? SpinBonusTS;
-	private Task SpinBonusTask = Task.CompletedTask;
-
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
 
@@ -52,9 +41,11 @@ internal class MainViewModel : INotifyPropertyChanged
 		return Numbers[index];
 	}
 
-	public MainViewModel()
+	public MainViewModel() : this(1, 60, 5)
+	{ }
+
+	public MainViewModel(int bottom, int top, int count)
 	{
-		int bottom = 1, top = 60, count = 5;
 		if (top <= bottom)
 			throw new ArgumentException("Upper Limit of LotteryNumbers must be greater than the Lower Limit");
 		if (top - bottom < count + 1)
@@ -68,32 +59,31 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public async void RollNumbers()
 	{
+		//Queue the full animation.
 		if (IsRolling)
 			return;
 		IsRolling = true;
-		_ = StartSpinningNumbers(QuickSpinDelay);
+		StartSpinningNumbers(QuickSpinDelay);
 		await Task.Delay(FullRollDelay);
 		await StopSpinningNumbers();
-		_ = StartSpinningBonus(QuickSpinDelay);
+		StartSpinningBonus(QuickSpinDelay);
 		await Task.Delay(FullRollDelay);
 		await StopSpinningBonus();
 		IsRolling = false;
 	}
 
-	private async Task StartSpinningNumbers(int delay)
+	private CancellationTokenSource? SpinNumbersTS;
+	private Task SpinNumbersTask = Task.CompletedTask;
+	private void StartSpinningNumbers(int delay)
 	{
-		if (IsSpinningNumbers)
-		{
-			await SpinNumbersTask;
+		if (!SpinNumbersTask.IsCompleted)
 			return;
-		}
 
 		SpinNumbersTS = new CancellationTokenSource();
 		CancellationToken ct = SpinNumbersTS.Token;
 
-		await StopSpinningBonus();
-
 		Random r = new();
+		//Until the cancellation token is recieved, regenerate then wait.
 		SpinNumbersTask = Task.Run(async () =>
 		{
 			while (!ct.IsCancellationRequested)
@@ -102,31 +92,28 @@ internal class MainViewModel : INotifyPropertyChanged
 				await Task.Delay(delay);
 			}
 		}, ct);
-		await SpinNumbersTask;
-		SpinNumbersTS.Dispose();
-		SpinNumbersTS = null;
-
 	}
 	private async Task StopSpinningNumbers()
 	{
+		//Cancel the task, wait for it to finish, then clean up.
 		SpinNumbersTS?.Cancel();
 		await SpinNumbersTask;
+		SpinNumbersTS?.Dispose();
+		SpinNumbersTS = null;
 	}
 
-	private async Task StartSpinningBonus(int delay)
+	private CancellationTokenSource? SpinBonusTS;
+	private Task SpinBonusTask = Task.CompletedTask;
+	private void StartSpinningBonus(int delay)
 	{
-		if (IsSpinningBonus)
-		{
-			await SpinBonusTask;
+		if (!SpinBonusTask.IsCompleted)
 			return;
-		}
 
 		SpinBonusTS = new CancellationTokenSource();
 		CancellationToken ct = SpinBonusTS.Token;
 
-		await StopSpinningNumbers();
-
 		Random r = new();
+		//Until the cancellation token is recieved, regenerate then wait.
 		SpinBonusTask = Task.Run(async () =>
 		{
 			while (!ct.IsCancellationRequested)
@@ -135,42 +122,44 @@ internal class MainViewModel : INotifyPropertyChanged
 				await Task.Delay(delay);
 			}
 		}, ct);
-		await SpinBonusTask;
-		SpinBonusTS.Dispose();
-		SpinBonusTS = null;
-
 	}
 	private async Task StopSpinningBonus()
 	{
+		//Cancel the task, wait for it to finish, then clean up
 		SpinBonusTS?.Cancel();
 		await SpinBonusTask;
+		SpinBonusTS?.Dispose();
+		SpinBonusTS = null;
 	}
 
-	private void RegenerateNumbers(Random r)
+	private IEnumerable<int?> RegenerateNumbers(Random r)
 	{
+		//Populate then sort an array into an ObservableCollection
 		BonusNumber = null;
 		int?[] numbers = new int?[Count];
 		for (int i = 0; i < Count; i++)
 			numbers[i] = GenerateNumber(r, numbers);
-
-		NumbersBase = new(numbers.Order());
+		//Only return the enumerator because nothing should modify outside of this.
+		return NumbersBase = new(numbers.Order());
 	}
 
-	private void RegenerateBonusNumber(Random r)
+	private int? RegenerateBonusNumber(Random r)
 	{
+		//Check to make sure Numbers is generated first.
 		if (Numbers.Any(n => n == null))
 			RegenerateNumbers(r);
-		BonusNumber = GenerateNumber(r, Numbers);
+		return BonusNumber = GenerateNumber(r, Numbers);
 	}
 
-	private int GenerateNumber(Random r, IEnumerable<int?> numbers)
+	private int GenerateNumber(Random r, IEnumerable<int?> exludeNumbers)
 	{
 		//A little brute forcey and could be cleverer for ranges with size ~= count. But adequate for this.
 		int? next = null;
-		while (next == null || numbers.Contains(next.Value))
+		while (next == null || exludeNumbers.Contains(next.Value))
 			next = r.Next(Bottom, Top);
 		return next.Value;
 	}
+
 
 	#region INotifyPropertyChanged
 	protected bool SetProperty<T>(ref T backingStore, T value,
@@ -187,6 +176,8 @@ internal class MainViewModel : INotifyPropertyChanged
 		OnPropertyChanged(propertyName);
 		return true;
 	}
+
+	public event PropertyChangedEventHandler? PropertyChanged;
 	protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
 	{
 		PropertyChangedEventHandler? changed = PropertyChanged;
