@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:LotteryPicker"
         mc:Ignorable="d"
         Title="Lottery Number Picker"
-        Height="Auto" Width="250"
-        SizeToContent="Height"
+        Height="Auto" Width="Auto" MinWidth="250"
+        SizeToContent="WidthAndHeight"
         ResizeMode="NoResize">
     <Window.Resources>
         <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
@@ -15,8 +15,17 @@
     <Window.DataContext>
         <local:MainViewModel/>
     </Window.DataContext>
-    <StackPanel>
-        <Grid Height="100">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto" MinWidth="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Grid.Column="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -28,16 +37,29 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0" TextWrapping="NoWrap" Text="{Binding Numbers[0], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
-            <TextBlock Grid.Row="0" Grid.Column="1" TextWrapping="NoWrap" Text="{Binding Numbers[1], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
-            <TextBlock Grid.Row="0" Grid.Column="2" TextWrapping="NoWrap" Text="{Binding Numbers[2], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
-            <TextBlock Grid.Row="0" Grid.Column="3" TextWrapping="NoWrap" Text="{Binding Numbers[3], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
-            <TextBlock Grid.Row="0" Grid.Column="4" TextWrapping="NoWrap" Text="{Binding Numbers[4], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
+            <TextBlock Grid.Row="0" Grid.Column="0" TextWrapping="NoWrap" Text="{Binding Numbers[0], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,10,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" TextWrapping="NoWrap" Text="{Binding Numbers[1], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,10,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" TextWrapping="NoWrap" Text="{Binding Numbers[2], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,10,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="3" TextWrapping="NoWrap" Text="{Binding Numbers[3], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,10,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="4" TextWrapping="NoWrap" Text="{Binding Numbers[4], TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,0,10,0"/>
             <TextBlock Grid.Row="1" Grid.Column="2" TextWrapping="NoWrap" Text="{Binding BonusNumber, TargetNullValue=-}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10,10,10,10"/>
 
             <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" TextWrapping="NoWrap" Text="Bonus:" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10"/>
         </Grid>
-        <Button Content="Roll" Margin="10,10,10,10" Click="Button_Click" IsEnabled="{Binding IsRolling, Converter={StaticResource InverseBooleanConverter}}"/>
+        <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="1" HorizontalAlignment="Center" Click="Button_Click" IsEnabled="{Binding IsRolling, Converter={StaticResource InverseBooleanConverter}}">
+                <TextBlock Text="Roll" Margin="16,4,16,4" />
+            </Button>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <TextBlock Text="Quick Roll:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <CheckBox IsChecked="{Binding QuickRoll}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
 
-    </StackPanel>
+    </Grid>
 </Window>

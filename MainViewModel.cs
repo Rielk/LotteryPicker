@@ -31,6 +31,9 @@ internal class MainViewModel : INotifyPropertyChanged
 		set => SetProperty(ref isRolling, value);
 	}
 
+	private bool quickRoll;
+	public bool QuickRoll { get => quickRoll; set => SetProperty(ref quickRoll, value); }
+
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
 
@@ -59,10 +62,18 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public async void RollNumbers()
 	{
+		if (QuickRoll)
+		{
+			Random r = new();
+			RegenerateNumbers(r);
+			RegenerateBonusNumber(r);
+			return;
+		}
 		//Queue the full animation.
 		if (IsRolling)
 			return;
 		IsRolling = true;
+		BonusNumber = null;
 		StartSpinningNumbers(QuickSpinDelay);
 		await Task.Delay(FullRollDelay);
 		await StopSpinningNumbers();
@@ -104,6 +115,7 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	private CancellationTokenSource? SpinBonusTS;
 	private Task SpinBonusTask = Task.CompletedTask;
+
 	private void StartSpinningBonus(int delay)
 	{
 		if (!SpinBonusTask.IsCompleted)
@@ -132,23 +144,21 @@ internal class MainViewModel : INotifyPropertyChanged
 		SpinBonusTS = null;
 	}
 
-	private IEnumerable<int?> RegenerateNumbers(Random r)
+	private void RegenerateNumbers(Random r)
 	{
 		//Populate then sort an array into an ObservableCollection
-		BonusNumber = null;
 		int?[] numbers = new int?[Count];
 		for (int i = 0; i < Count; i++)
 			numbers[i] = GenerateNumber(r, numbers);
-		//Only return the enumerator because nothing should modify outside of this.
-		return NumbersBase = new(numbers.Order());
+		NumbersBase = new(numbers.Order());
 	}
 
-	private int? RegenerateBonusNumber(Random r)
+	private void RegenerateBonusNumber(Random r)
 	{
 		//Check to make sure Numbers is generated first.
 		if (Numbers.Any(n => n == null))
 			RegenerateNumbers(r);
-		return BonusNumber = GenerateNumber(r, Numbers);
+		BonusNumber = GenerateNumber(r, Numbers);
 	}
 
 	private int GenerateNumber(Random r, IEnumerable<int?> exludeNumbers)
