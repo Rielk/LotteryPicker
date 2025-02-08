@@ -89,10 +89,14 @@ internal class MainViewModel : INotifyPropertyChanged
 			await StopSpinningBonus();
 			IsRolling = false;
 		}
-		if (Numbers.All(n => n.HasValue) && BonusNumber.HasValue)
-			History.Insert(0, new(Numbers.Select(n => n!.Value), BonusNumber.Value));
-		while (History.Count > 10)
-			History.RemoveAt(History.Count - 1);
+
+		lock (Numbers)
+		{
+			if (Numbers.All(n => n.HasValue) && BonusNumber.HasValue)
+				History.Insert(0, new(Numbers.Select(n => n!.Value), BonusNumber.Value));
+			while (History.Count > 10)
+				History.RemoveAt(History.Count - 1);
+		}
 	}
 
 	private CancellationTokenSource? SpinNumbersTS;
@@ -158,19 +162,25 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	private void RegenerateNumbers(Random r)
 	{
-		//Populate then sort an array into an ObservableCollection
-		int?[] numbers = new int?[Count];
-		for (int i = 0; i < Count; i++)
-			numbers[i] = GenerateNumber(r, numbers);
-		NumbersBase = new(numbers.Order());
+		lock (Numbers)
+		{
+			//Populate then sort an array into an ObservableCollection
+			int?[] numbers = new int?[Count];
+			for (int i = 0; i < Count; i++)
+				numbers[i] = GenerateNumber(r, numbers);
+			NumbersBase = new(numbers.Order());
+		}
 	}
 
 	private void RegenerateBonusNumber(Random r)
 	{
-		//Check to make sure Numbers is generated first.
-		if (Numbers.Any(n => n == null))
-			RegenerateNumbers(r);
-		BonusNumber = GenerateNumber(r, Numbers);
+		lock (Numbers)
+		{
+			//Check to make sure Numbers is generated first.
+			if (Numbers.Any(n => n == null))
+				RegenerateNumbers(r);
+			BonusNumber = GenerateNumber(r, Numbers);
+		}
 	}
 
 	private int GenerateNumber(Random r, IEnumerable<int?> exludeNumbers)
