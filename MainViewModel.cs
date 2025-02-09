@@ -54,12 +54,14 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public ObservableCollection<HistoryItem> History { get; } = [];
 
+	//Hardcoded defaults
 	private const int Bottom_Default = 1;
 	private const int Top_Default = 60;
 	private const int Count_Default = 5;
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
 
+	//Empty Costructor for Resource DataBinding
 	public MainViewModel() : this(Bottom_Default, Top_Default, Count_Default)
 	{ }
 
@@ -81,6 +83,10 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public async void RollNumbers()
 	{
+		if (IsRolling)
+			return;
+		IsRolling = true;
+
 		if (QuickRoll)
 		{
 			//Just generate numbers
@@ -91,9 +97,6 @@ internal class MainViewModel : INotifyPropertyChanged
 		else
 		{
 			//Queue the full animation.
-			if (IsRolling)
-				return;
-			IsRolling = true;
 			BonusNumber = null;
 			StartSpinningNumbers(QuickSpinDelay);
 			await Task.Delay(FullRollDelay);
@@ -101,7 +104,6 @@ internal class MainViewModel : INotifyPropertyChanged
 			StartSpinningBonus(QuickSpinDelay);
 			await Task.Delay(FullRollDelay);
 			await StopSpinningBonus();
-			IsRolling = false;
 		}
 
 		lock (this)
@@ -112,6 +114,8 @@ internal class MainViewModel : INotifyPropertyChanged
 		}
 		while (History.Count > 10)
 			History.RemoveAt(History.Count - 1);
+
+		IsRolling = false;
 	}
 
 
