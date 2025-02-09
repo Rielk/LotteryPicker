@@ -1,15 +1,16 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace LotteryPicker;
 internal class MainViewModel : INotifyPropertyChanged
 {
-	private ReadOnlyObservableCollection<int?> numbers;
-	public ReadOnlyObservableCollection<int?> Numbers => numbers;
-	private ObservableCollection<int?> NumbersBase
+	private ReadOnlyCollection<int?> numbers;
+	public ReadOnlyCollection<int?> Numbers
 	{
-		set => SetProperty(ref numbers, new(value), nameof(Numbers));
+		get => numbers;
+		private set => SetProperty(ref numbers, value);
 	}
 
 	private int? bonusNumber;
@@ -31,6 +32,20 @@ internal class MainViewModel : INotifyPropertyChanged
 		set => SetProperty(ref isRolling, value);
 	}
 
+	private bool isSpinningNumbers = false;
+	public bool IsSpinningNumbers
+	{
+		get => isSpinningNumbers;
+		private set => SetProperty(ref isSpinningNumbers, value);
+	}
+
+	private bool isSpinningBonus = false;
+	public bool IsSpinningBonus
+	{
+		get => isSpinningBonus;
+		private set => SetProperty(ref isSpinningBonus, value);
+	}
+
 	private bool quickRoll = false;
 	public bool QuickRoll { get => quickRoll; set => SetProperty(ref quickRoll, value); }
 
@@ -39,17 +54,13 @@ internal class MainViewModel : INotifyPropertyChanged
 
 	public ObservableCollection<HistoryItem> History { get; } = [];
 
+	private const int Bottom_Default = 1;
+	private const int Top_Default = 60;
+	private const int Count_Default = 5;
 	private const int FullRollDelay = 1000;
 	private const int QuickSpinDelay = 50;
 
-	public int? GetNumber(int index)
-	{
-		if (index > 4)
-			return null;
-		return Numbers[index];
-	}
-
-	public MainViewModel() : this(1, 60, 5)
+	public MainViewModel() : this(Bottom_Default, Top_Default, Count_Default)
 	{ }
 
 	public MainViewModel(int bottom, int top, int count)
@@ -62,7 +73,10 @@ internal class MainViewModel : INotifyPropertyChanged
 		Bottom = bottom;
 		Top = top;
 		Count = count;
-		numbers = new(new(new int?[5]));
+		List<int?> list = [];
+		for (int i = 0; i < count; i++)
+			list.Add(null);
+		numbers = new(list);
 	}
 
 	public async void RollNumbers()
@@ -90,91 +104,80 @@ internal class MainViewModel : INotifyPropertyChanged
 			IsRolling = false;
 		}
 
-		lock (Numbers)
+		lock (this)
 		{
+			//Check should be unnecessary and should always be true.
 			if (Numbers.All(n => n.HasValue) && BonusNumber.HasValue)
-				History.Insert(0, new(Numbers.Select(n => n!.Value), BonusNumber.Value));
-			while (History.Count > 10)
-				History.RemoveAt(History.Count - 1);
+				History.Insert(0, new(Numbers.Select(n => n ?? -1), BonusNumber.Value));
 		}
+		while (History.Count > 10)
+			History.RemoveAt(History.Count - 1);
 	}
 
-	private CancellationTokenSource? SpinNumbersTS;
-	private Task SpinNumbersTask = Task.CompletedTask;
-	private void StartSpinningNumbers(int delay)
-	{
-		if (!SpinNumbersTask.IsCompleted)
-			return;
 
-		SpinNumbersTS = new CancellationTokenSource();
-		CancellationToken ct = SpinNumbersTS.Token;
+	private Task SpinNumbersTask = Task.CompletedTask;
+	private bool StartSpinningNumbers(int delay)
+	{
+		if (IsSpinningNumbers)
+			return false;
+		IsSpinningNumbers = true;
 
 		Random r = new();
-		//Until the cancellation token is recieved, regenerate then wait.
 		SpinNumbersTask = Task.Run(async () =>
 		{
-			while (!ct.IsCancellationRequested)
+			while (IsSpinningNumbers)
 			{
 				RegenerateNumbers(r);
 				await Task.Delay(delay);
 			}
-		}, ct);
+		});
+		return true;
 	}
 	private async Task StopSpinningNumbers()
 	{
-		//Cancel the task, wait for it to finish, then clean up.
-		SpinNumbersTS?.Cancel();
+		IsSpinningNumbers = false;
 		await SpinNumbersTask;
-		SpinNumbersTS?.Dispose();
-		SpinNumbersTS = null;
 	}
 
-	private CancellationTokenSource? SpinBonusTS;
 	private Task SpinBonusTask = Task.CompletedTask;
-
-	private void StartSpinningBonus(int delay)
+	private bool StartSpinningBonus(int delay)
 	{
-		if (!SpinBonusTask.IsCompleted)
-			return;
-
-		SpinBonusTS = new CancellationTokenSource();
-		CancellationToken ct = SpinBonusTS.Token;
+		if (IsSpinningBonus)
+			return false;
+		IsSpinningBonus = true;
 
 		Random r = new();
-		//Until the cancellation token is recieved, regenerate then wait.
 		SpinBonusTask = Task.Run(async () =>
-		{
-			while (!ct.IsCancellationRequested)
 			{
-				RegenerateBonusNumber(r);
-				await Task.Delay(delay);
-			}
-		}, ct);
+				while (IsSpinningBonus)
+				{
+					RegenerateBonusNumber(r);
+					await Task.Delay(delay);
+				}
+			});
+		return true;
 	}
 	private async Task StopSpinningBonus()
 	{
-		//Cancel the task, wait for it to finish, then clean up
-		SpinBonusTS?.Cancel();
+		IsSpinningBonus = false;
 		await SpinBonusTask;
-		SpinBonusTS?.Dispose();
-		SpinBonusTS = null;
 	}
 
 	private void RegenerateNumbers(Random r)
 	{
-		lock (Numbers)
+		lock (this)
 		{
-			//Populate then sort an array into an ObservableCollection
-			int?[] numbers = new int?[Count];
+			IEnumerable<int?> numbers = [];
 			for (int i = 0; i < Count; i++)
-				numbers[i] = GenerateNumber(r, numbers);
-			NumbersBase = new(numbers.Order());
+				numbers = numbers.Append(GenerateNumber(r, numbers));
+			Numbers = new([.. numbers.Order()]);
 		}
 	}
 
+	[MemberNotNull(nameof(BonusNumber))]
 	private void RegenerateBonusNumber(Random r)
 	{
-		lock (Numbers)
+		lock (this)
 		{
 			//Check to make sure Numbers is generated first.
 			if (Numbers.Any(n => n == null))
