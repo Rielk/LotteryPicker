@@ -29,7 +29,7 @@ internal class MainViewModel : INotifyPropertyChanged
 	public bool IsRolling
 	{
 		get => isRolling;
-		set => SetProperty(ref isRolling, value);
+		private set => SetProperty(ref isRolling, value);
 	}
 
 	private bool isSpinningNumbers = false;
